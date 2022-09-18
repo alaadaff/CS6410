@@ -2,7 +2,7 @@
 
 
 
-def addServer(record, tcpIP, timeStamp, digit):
+def addServer(record: dict, tcpIP: str, timeStamp: int, digit: int):
     """
     tcpIP: '1.1.1.1.:67893'
     timeStamp: time.time() 2345627354
@@ -19,7 +19,7 @@ def addServer(record, tcpIP, timeStamp, digit):
     
 
 
-def updateServer(record, tcpIP, timeStamp, digit):
+def updateServer(record: dict, tcpIP: str, timeStamp: int, digit: int):
     """
     tcpIP: '1.1.1.1.:67893'
     timeStamp: time.time() 2345627354
@@ -42,6 +42,17 @@ def updateServer(record, tcpIP, timeStamp, digit):
         #todo: try catch statements for adversarial digit
         record[tcpIP] = [timeStamp, digit]
 
+
+def convertRecordToString(record: dict):
+    """
+    Returns a dictionary object as a list of string objects for sending over tcpip
+    """
+    final = [] # ["127.0.0.1:30000,463657697,6", "..."]
+    for tcpip in record.keys():
+        fullStr = str(tcpip) + "," + str(record[tcpip][0]) + "," + str(record[tcpip][1])
+        final.append(fullStr)
+    
+    return final
 
 
 
