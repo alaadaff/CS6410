@@ -51,7 +51,7 @@ def server(event):
                 conn, addr = s.accept() #servers accepts or completes the connection
                 if conn:
                     print(f"connected to {addr}")  
-                
+                    s.setblocking(True)
             
                     while True:
                         print_lock.acquire()
