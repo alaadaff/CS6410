@@ -14,7 +14,7 @@ import db
 
 
 
-def selectRandomPort():
+def selectRandomPort(record, PORT):
     '''
     Returns a random port number from record. Ensures that it does not return the system's local port. 
     This function is called every 3 seconds
@@ -34,15 +34,16 @@ def selectRandomPort():
         randomTCPIP = random.choice(list(record)) 
     
     tcpipToGossipTo = randomTCPIP.split(':') # e.g. [127.0.0.1, 50000]
-    return(tcpipToGossipTo) #prints a list of strings with an IP, port format 127.0.0.1, 50000]
+    return tcpipToGossipTo #prints a list of strings with an IP, port format [127.0.0.1, 50000]
 
 
 def server(event):
     '''
     Recieves data from other clients and updates record
     '''
+
     while not event.is_set():
-        
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.bind(('', PORT))
             s.listen()
             print(f"listening on: {PORT} ")
@@ -62,11 +63,8 @@ def server(event):
                             response = conn.recv(2048)
                             if not response:
                                 break
-                        #s.close()
-        
-
-            #conn.close()
-        
+                s.close()
+                
 
 
 def client(event):
@@ -74,36 +72,39 @@ def client(event):
     Accesses record, selects ports to gossip to, and sends data
     '''
     
-    
-    while not event.is_set():
+    # while not event.is_set():
 
+    while True:
 
-            while True:
-                try:
-                    #threading.Timer(3.0, selectRandomPort())
-                    #gossip = selectRandomPort()  #returns a list of strings 
-                    #print('trying to connect to: ', gossip)
-                    
-                    print("Trying to connect: ")
-                    y.connect((gossip_client[0], int(gossip_client[1]))) #client connects after server listens
-                except ConnectionRefusedError:
-                    print(
-                        f"Connection refused!"
-                    )
+        print("Waiting 3 seconds")
+        time.sleep(3)
+        
+        # instantiate a socket
+        y = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        
+        random_server = selectRandomPort(record, PORT)
+        print(f"Connecting to a random port: {random_server}")
+        y.connect((random_server[0], int(random_server[1])))
+
+        while True:
+            data = y.recv(1024) #return bytes / 3 different values (TCPIP, timeStamp, digit)
+            if data:
+                data = data.decode(encoding='utf-8', errors='strict') #return string
+                data = data.split(",") #return list based on split values
+                print_lock.acquire()
+                if data[0] in record.keys():
+                    db.updateServer(record, data[0], int(data[1]), int(data[2]))
                 else:
-                    while True:
-                        data = y.recv(1024) #return bytes / 3 different values (TCPIP, timeStamp, digit)
-                        if not data:
-                            break
-                        data = data.decode(encoding='utf-8', errors='strict') #return string
-                        data = data.split(",") #return list based on split values
-                        print_lock.acquire()
-                        if data[0] in record.keys():
-                            db.updateServer(record, data[0], int(data[1]), int(data[2]))
-                        else:
-                            db.addServer(record, data[0], int(data[1]), int(data[2]))
-                        print_lock.release()
-                        print("TCP: ", data)
+                    db.addServer(record, data[0], int(data[1]), int(data[2]))
+                print_lock.release()
+                print("TCP: ", data)
+        y.close()
+
+        # except ConnectionRefusedError:
+        #     print("Connection refused!")
+        #     continue;
+            #else:
+                    
 
         
 
@@ -112,25 +113,12 @@ if __name__ == "__main__":
     print_lock = threading.Lock()
     ipAddress = sys.argv[1] #server inputs its own ip addr / client inputs ip address it wants to connect to
     PORT = int(sys.argv[2])
+    
     record = {}
-    
-    print("Record after initializing: ", record)
-
     # add own tcpip to record
-    
-
     db.addServer(record, ipAddress+':'+str(PORT), int(time.time()), 5)
-
-   
-    
+    firstConnection = True 
     print("Record after server adds itself to db:", record)
-
-
-    
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    y = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    
 
     server_event = threading.Event() #when an event is first created it is in the not set state (False)
     client_event = threading.Event() #False
@@ -143,37 +131,62 @@ if __name__ == "__main__":
     serverThread.start()
 
 
-    #user will input the IP address node they want to gossip with and port 
-    nodeToGossip = input("Please input IP address and port of node you want to start gossiping with: ") #string 127.0.0.1:56789
-
-    gossip_client = nodeToGossip.split(":")
-
-    clientThread.start()
-
-   
-
-    #check if threads are alive for debugging purposes
-    print(serverThread.is_alive())
-    print(clientThread.is_alive())
-
-
-
     while True:
-        d = input("Enter digit: ")
+        print(clientThread.is_alive()) 
+        d = input("Enter IP address of new node with +IP:PORT. Or, enter digit.")
         if d:
             if d == "end":
                 break     
             if d == "?":
                 print(record)
+            elif d[0] == "+":
+                db.addServer(record, d[1:], 0, 0)
+                #gossip_client = d[1:].split(":")
+                # start program once other port has been entered
+                clientThread.start()
+                client_event.set()
+                time.sleep(3)
+                #print(serverThread.is_alive())
             elif int(d) in range (0,10):
                 print("updating your own digit")
                 db.updateServer(record, ipAddress+':'+str(PORT), int(time.time()), d)
                 print(record)
+        
+
+
+    #user will input the IP address node they want to gossip with and port 
+    # nodeToGossip = input("Please input IP address and port of node you want to start gossiping with: ") #string 127.0.0.1:56789
+
+    
+    
+    # start program once other port has been entered
+    # if nodeToGossip:
+    #     gossip_client = nodeToGossip.split(":")
+
+    # firstConnection = True #flag to connect to first node, or random node from db
+
+    # clientThread.start()
+
+    #check if threads are alive for debugging purposes
+    
+
+
+    # while True:
+    #     d = input("Enter digit: ")
+    #     if d:
+    #         if d == "end":
+    #             break     
+    #         if d == "?":
+    #             print(record)
+    #         elif int(d) in range (0,10):
+    #             print("updating your own digit")
+    #             db.updateServer(record, ipAddress+':'+str(PORT), int(time.time()), d)
+    #             print(record)
                  
        
     #Again check if threads are alive for debugging 
-    print(serverThread.is_alive())
-    print(clientThread.is_alive())
+    # print(serverThread.is_alive())
+    # print(clientThread.is_alive())
 
 
 
