@@ -10,7 +10,7 @@ import time
 import os
 import sys
 
-import database
+import db
 
 
 
@@ -55,14 +55,14 @@ def server(event):
             
                     while True:
                         print_lock.acquire()
-                        recordList = database.convertRecordToString(record)
+                        recordList = db.convertRecordToString(record)
                         print_lock.release()
                         for r in recordList:
-                            s.sendall(r.encode())
-                            response = s.recv(2048)
+                            conn.sendall(r.encode())
+                            response = conn.recv(2048)
                             if not response:
                                 break
-                        s.close()
+                        #s.close()
         
 
             #conn.close()
@@ -81,9 +81,11 @@ def client(event):
             while True:
                 try:
                     #threading.Timer(3.0, selectRandomPort())
-                    gossip = selectRandomPort()  #returns a list of strings 
-                    print('trying to connect to: ', gossip)
-                    y.connect((gossip[0], int(gossip[1]))) #client connects after server listens
+                    #gossip = selectRandomPort()  #returns a list of strings 
+                    #print('trying to connect to: ', gossip)
+                    
+                    print("Trying to connect: ")
+                    y.connect((gossip_client[0], int(gossip_client[1]))) #client connects after server listens
                 except ConnectionRefusedError:
                     print(
                         f"Connection refused!"
@@ -97,9 +99,9 @@ def client(event):
                         data = data.split(",") #return list based on split values
                         print_lock.acquire()
                         if data[0] in record.keys():
-                            database.updateServer(record, data[0], int(data[1]), int(data[2]))
+                            db.updateServer(record, data[0], int(data[1]), int(data[2]))
                         else:
-                            database.addServer(record, data[0], int(data[1]), int(data[2]))
+                            db.addServer(record, data[0], int(data[1]), int(data[2]))
                         print_lock.release()
                         print("TCP: ", data)
 
@@ -117,7 +119,7 @@ if __name__ == "__main__":
     # add own tcpip to record
     
 
-    database.addServer(record, ipAddress+':'+str(PORT), int(time.time()), 5)
+    db.addServer(record, ipAddress+':'+str(PORT), int(time.time()), 5)
 
    
     
@@ -128,7 +130,7 @@ if __name__ == "__main__":
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     y = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-   
+    
 
     server_event = threading.Event() #when an event is first created it is in the not set state (False)
     client_event = threading.Event() #False
@@ -139,7 +141,16 @@ if __name__ == "__main__":
 
     # starting threads
     serverThread.start()
+
+
+    #user will input the IP address node they want to gossip with and port 
+    nodeToGossip = input("Please input IP address and port of node you want to start gossiping with: ") #string 127.0.0.1:56789
+
+    gossip_client = nodeToGossip.split(":")
+
     clientThread.start()
+
+   
 
     #check if threads are alive for debugging purposes
     print(serverThread.is_alive())
@@ -156,7 +167,7 @@ if __name__ == "__main__":
                 print(record)
             elif int(d) in range (0,10):
                 print("updating your own digit")
-                database.updateServer(record, ipAddress+':'+str(PORT), int(time.time()), d)
+                db.updateServer(record, ipAddress+':'+str(PORT), int(time.time()), d)
                 print(record)
                  
        
