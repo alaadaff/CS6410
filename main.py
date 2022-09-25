@@ -13,7 +13,8 @@ import sys
 import db
 
 
-
+# put in db.py
+# use lock anytime record is accessed
 def selectRandomPort(record, PORT):
     '''
     Returns a random port number from record. Ensures that it does not return the system's local port. 
@@ -46,7 +47,7 @@ def server(event):
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.bind(('', PORT))
             s.listen()
-            print(f"listening on: {PORT} ")
+            print(f"\nlistening on: {PORT}")
             
             while True:
                 conn, addr = s.accept() #servers accepts or completes the connection
@@ -54,16 +55,16 @@ def server(event):
                     print(f"connected to {addr}")  
                     s.setblocking(True)
             
-                    while True:
-                        print_lock.acquire()
-                        recordList = db.convertRecordToString(record)
-                        print_lock.release()
-                        for r in recordList:
-                            conn.sendall(r.encode())
-                            response = conn.recv(2048)
-                            if not response:
-                                break
-                s.close()
+                    # while True:
+                    print_lock.acquire()
+                    recordList = db.convertRecordToString(record)
+                    print_lock.release()
+                    for r in recordList:
+                        conn.sendall(r.encode())
+                        # response = conn.recv(2048)
+                        # if not response:
+                        #     print("no response from client")
+                conn.close()
                 
 
 
@@ -86,8 +87,9 @@ def client(event):
         print(f"Connecting to a random port: {random_server}")
         y.connect((random_server[0], int(random_server[1])))
 
-        while True:
-            data = y.recv(1024) #return bytes / 3 different values (TCPIP, timeStamp, digit)
+        data = y.recv(1024)
+        while data:
+             #return bytes / 3 different values (TCPIP, timeStamp, digit)
             if data:
                 data = data.decode(encoding='utf-8', errors='strict') #return string
                 data = data.split(",") #return list based on split values
@@ -98,6 +100,8 @@ def client(event):
                     db.addServer(record, data[0], int(data[1]), int(data[2]))
                 print_lock.release()
                 print("TCP: ", data)
+            data = y.recv(1024)
+            
         y.close()
 
         # except ConnectionRefusedError:
@@ -129,7 +133,7 @@ if __name__ == "__main__":
 
     # starting threads
     serverThread.start()
-
+    clientThread.start()
 
     while True:
         print(clientThread.is_alive()) 
@@ -141,17 +145,10 @@ if __name__ == "__main__":
                 print(record)
             elif d[0] == "+":
                 db.addServer(record, d[1:], 0, 0)
-                #gossip_client = d[1:].split(":")
-                # start program once other port has been entered
-                clientThread.start()
-                client_event.set()
-                time.sleep(3)
-                #print(serverThread.is_alive())
             elif int(d) in range (0,10):
                 print("updating your own digit")
                 db.updateServer(record, ipAddress+':'+str(PORT), int(time.time()), d)
-                print(record)
-        
+                print(record)      
 
 
     #user will input the IP address node they want to gossip with and port 
@@ -195,6 +192,7 @@ if __name__ == "__main__":
 
     serverThread.join()
     clientThread.join()
+    
 
 
 
