@@ -48,7 +48,7 @@ def convertRecordToString(record: dict):
     """
     final = [] # ["127.0.0.1:30000,463657697,6", "..."]
     for tcpip in record.keys():
-        fullStr = str(tcpip) + "," + str(record[tcpip][0]) + "," + str(record[tcpip][1])
+        fullStr = str(tcpip) + "^" + str(record[tcpip][0]) + "^" + str(record[tcpip][1]) + "^"
         final.append(fullStr)
     
     return final #final is ['127.0.0.1:56789,12345,5']

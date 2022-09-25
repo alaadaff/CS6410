@@ -62,7 +62,7 @@ def client(event, lock):
              #return bytes / 3 different values (TCPIP, timeStamp, digit)
             if data:
                 data = data.decode(encoding='utf-8', errors='strict') #return string
-                data = data.split(",") #return list based on split values
+                data = data.split("^") #return list based on split values
                 with lock:
                     print(f"Data received from server: {data}")
                     if data[0] in record.keys():
