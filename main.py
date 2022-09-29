@@ -51,34 +51,38 @@ def client(event, lock):
         # instantiate a socket
         y = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
-        with lock:
-            random_server = db.selectRandomPort(record, PORT)
-        
-        print(f"Connecting to a random port: {random_server}")
-        y.connect((random_server[0], int(random_server[1])))
+        try: 
+            with lock:
+                random_server = db.selectRandomPort(record, PORT)
+            
+            print(f"Connecting to a random port: {random_server}")
+            y.connect((random_server[0], int(random_server[1])))
 
-        data = y.recv(1024)
-        while data:
-             #return bytes / 3 different values (TCPIP, timeStamp, digit)
-            if data:
-                data = data.decode(encoding='utf-8', errors='strict') #return string
-                data = data.split("^") #return list based on split values
-                with lock:
-                    print(f"Data received from server: {data}")
-                    if data[0] in record.keys():
-                        db.updateServer(record, data[0], int(data[1]), int(data[2]))
-                    else:
-                        db.addServer(record, data[0], int(data[1]), int(data[2]))
-                
             data = y.recv(1024)
-
+            while data:
+                #return bytes / 3 different values (TCPIP, timeStamp, digit)
+                if data:
+                    data = data.decode(encoding='utf-8', errors='strict') #return string
+                    data = data.split("\n") #return list based on split values
+                    with lock:
+                        print(f"Data received from server: {data}")
+                        for d in data:
+                            if d != '':
+                                d_list = d.split(",")
+                                if d_list[0] in record.keys():
+                                    db.updateServer(record, d_list[0], int(d_list[1]), int(d_list[2]))
+                                else:
+                                    db.addServer(record, d_list[0], int(d_list[1]), int(d_list[2]))
+                    
+                data = y.recv(1024)
+        
+        except ConnectionRefusedError:
+            print("Connection refused!")
+            continue;
             
         y.close()
 
-        # except ConnectionRefusedError:
-        #     print("Connection refused!")
-        #     continue;
-            #else:
+        
                     
 
         

@@ -48,7 +48,7 @@ def convertRecordToString(record: dict):
     """
     final = [] # ["127.0.0.1:30000,463657697,6", "..."]
     for tcpip in record.keys():
-        fullStr = str(tcpip) + "^" + str(record[tcpip][0]) + "^" + str(record[tcpip][1]) + "^"
+        fullStr = str(tcpip) + "," + str(record[tcpip][0]) + "," + str(record[tcpip][1]) + '\n'
         final.append(fullStr)
     
     return final #final is ['127.0.0.1:56789,12345,5']
@@ -66,7 +66,7 @@ def selectRandomPort(record, PORT):
     host_name  = socket.gethostname()
     host_ip = socket.gethostbyname(host_name)
 
-    myTCPIP = host_ip+':'+str(PORT)
+    myTCPIP = host_ip+';'+str(PORT)
 
     #if the randomizer selected myTCPIP, then run it again
     print('available records: ', record)
